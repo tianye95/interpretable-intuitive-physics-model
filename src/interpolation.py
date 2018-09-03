@@ -31,7 +31,7 @@ def main(args):
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 
     # ------------------------- get data loaders -------------------------
-    num_feature, trainlabels = 306, ["mass", "force", "friction"]
+    num_feature, trainlabels = 306, args.train_labels
     passthrough_dict = utils.get_passthrough(trainlabels, parameter_length=25, vector_length=num_feature)
     train_loader, shape_test_loader, parameter_test_loader = \
         dataset.getloader(args, labels=trainlabels, inframe=[0, 1, 2, 3], outframe=[4])
@@ -57,21 +57,24 @@ def interpolate(batch_loader, model, criterion, epoch, optimizer, args=None):
     data_time = utils.AverageMeter()
     losses = utils.AverageMeter()
     end_time = time.time()
+    other_losses = {str(key): utils.AverageMeter() for key in range(2, 5)}
 
     for batch_id, (batch_input, batch_output, indices_dict) in enumerate(batch_loader):
         data_time.update(time.time() - end_time)
         optimizer.zero_grad()
-        model_input = utils.combinebatchdata(batch_input, autograd=True, cuda=args.cuda)
-        target = utils.combinebatchdata(batch_output, autograd=True, cuda=args.cuda)
+        model_input = utils.combinebatchdata(batch_input, autograd=False, cuda=args.cuda)
+        target = utils.combinebatchdata(batch_output, autograd=False, cuda=args.cuda)
 
-        interpolation, extraoutputs = model(model_input, indices_dict, interpolate=True)
+        interpolation, extraoutputs = model(model_input, indices_dict)
         loss = criterion(interpolation, target[4])
         losses.update(loss.data[0])
+        for key, lossmeter in other_losses.items():
+            lossmeter.update(criterion(interpolation, target[4], select=int(key)).data[0])
 
         batch_time.update(time.time() - end_time)
         end_time = time.time()
         if batch_id % args.log_interval == 0:
-            utils.print_training_status(epoch, batch_id, len(batch_loader), losses)
+            utils.print_training_status(epoch, batch_id, len(batch_loader), losses, other_losses)
 
     print('Epoch: [{0}] Average Loss {loss.avg:.6f}; Batch Avg Time {b_time.avg:.6f}'
           .format(epoch, loss=losses, b_time=batch_time))
@@ -98,7 +101,8 @@ def parse_arguments():
     parser.add_argument('--data-path', default=paths.data_path, help='path to image input and target')
     parser.add_argument('--visualization-path', default=os.path.join(paths.visualization_path))
     parser.add_argument('--resume', default=os.path.join(paths.model_path))
-    parser.add_argument('--project-name', default='test')
+    parser.add_argument('--project-name', default='example')
+    parser.add_argument('--train-labels', default=["mass", "force", "friction"])
 
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='Enables CUDA training')

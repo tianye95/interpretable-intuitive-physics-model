@@ -30,7 +30,7 @@ def main(args):
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 
     # ------------------------- get data loaders -------------------------
-    num_feature, trainlabels = 306, ["mass", "force", "friction"]
+    num_feature, trainlabels = 306, args.train_labels
     passthrough_dict = utils.get_passthrough(trainlabels, parameter_length=25, vector_length=num_feature)
     train_loader, shape_test_loader, parameter_test_loader = \
         dataset.getloader(args, labels=trainlabels, inframe=[0, 1, 2, 3], outframe=[4])
@@ -69,7 +69,7 @@ def train(batch_loader, model, criterion, optimizer, epoch, passthrough_dict, ar
     for batch_id, (batch_input, batch_output, indices_dict) in enumerate(batch_loader):
         data_time.update(time.time() - end_time)
         model_input = utils.combinebatchdata(batch_input, autograd=True, cuda=args.cuda)
-        target = utils.combinebatchdata(batch_output, autograd=True, cuda=args.cuda)
+        target = utils.combinebatchdata(batch_output, autograd=False, cuda=args.cuda)
         loss_weight = utils.get_weight(target, cuda=args.cuda)
 
         prediction, extraoutputs = model(model_input, indices_dict)
@@ -120,7 +120,8 @@ def parse_arguments():
     parser.add_argument('--data-path', default=paths.data_path, help='path to image input and target')
     parser.add_argument('--visualization-path', default=os.path.join(paths.visualization_path))
     parser.add_argument('--resume', default=os.path.join(paths.model_path))
-    parser.add_argument('--project-name', default='test')
+    parser.add_argument('--project-name', default='default')
+    parser.add_argument('--train-labels', default=["mass", "force", "friction"])
 
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='Enables CUDA training')

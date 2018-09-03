@@ -30,13 +30,13 @@ def main(args):
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 
     # ------------------------- get data loaders -------------------------
-    num_feature, trainlabels = 306, ["mass", "force", "friction"]
+    num_feature, trainlabels = 306, args.train_labels
     passthrough_dict = utils.get_passthrough(trainlabels, parameter_length=25, vector_length=num_feature)
     train_loader, shape_test_loader, parameter_test_loader = \
         dataset.getloader(args, labels=trainlabels, inframe=[0, 1, 2, 3], outframe=[4])
 
     # ------------------------- initialize model and optimizer -------------------------
-    model = net.PhysicsModel(num_feature=num_feature, passthrough=passthrough_dict)
+    model = net.PhysicsModel(num_feature=num_feature, passthrough=passthrough_dict, select=False)
     if args.cuda:
         model = model.cuda()
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
@@ -45,13 +45,13 @@ def main(args):
     # ------------------------- define criterion -------------------------
     criterion = evaluation.pixel
 
-    shape_error = test(shape_test_loader, model, criterion, start_epoch, optimizer, args=args)
-    parameter_error = test(parameter_test_loader, model, criterion, start_epoch, optimizer, args=args)
+    shape_error = test(shape_test_loader, model, criterion, start_epoch, args=args)
+    parameter_error = test(parameter_test_loader, model, criterion, start_epoch, args=args)
 
     print('Time elapsed: {:.2f}s'.format(time.time() - start_time))
 
 
-def test(batch_loader, model, criterion, epoch, optimizer, args=None):
+def test(batch_loader, model, criterion, epoch, args=None):
     batch_time = utils.AverageMeter()
     data_time = utils.AverageMeter()
     losses = utils.AverageMeter()
@@ -65,10 +65,6 @@ def test(batch_loader, model, criterion, epoch, optimizer, args=None):
         prediction, extraoutputs = model(model_input, indices_dict)
         loss = criterion(prediction, target[4])
         losses.update(loss.data[0])
-
-        optimizer.zero_grad()
-        loss.backward()
-        # optimizer.step()
 
         batch_time.update(time.time() - end_time)
         end_time = time.time()
@@ -100,7 +96,8 @@ def parse_arguments():
     parser.add_argument('--data-path', default=paths.data_path, help='path to image input and target')
     parser.add_argument('--visualization-path', default=os.path.join(paths.visualization_path))
     parser.add_argument('--resume', default=os.path.join(paths.model_path))
-    parser.add_argument('--project-name', default='test')
+    parser.add_argument('--project-name', default='example')
+    parser.add_argument('--train-labels', default=["mass"])
 
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='Enables CUDA training')

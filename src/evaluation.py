@@ -43,10 +43,21 @@ def change(features, indices_dict, passthrough_dict, weight=None):
     return change_feature_loss
 
 
-def pixel(output, target):
+def pixel(output, target, select=None):
     fun = torch.nn.MSELoss(size_average=True, reduce=True)
     batch_size = output.size(0)
-    pixel_loss = fun(output[0, :, :, :], target[0, :, :, :]) * 256 * 256
-    for i in range(1, batch_size):
-        pixel_loss += fun(output[i, :, :, :], target[i, :, :, :]) * 256 * 256
-    return pixel_loss / batch_size
+    if select is None:
+        pixel_loss = fun(output[0, :, :, :], target[0, :, :, :]) * 255 * 255
+        for i in range(1, batch_size):
+            pixel_loss += fun(output[i, :, :, :], target[i, :, :, :]) * 255 * 255
+        return pixel_loss / batch_size
+    else:
+        select -= 1
+        pixel_loss = fun(output[select, :, :, :], target[select, :, :, :]) * 255 * 255
+        counter = 1
+        for i in range(select, batch_size):
+            if i % 5 != select:
+                continue
+            pixel_loss += fun(output[i, :, :, :], target[i, :, :, :]) * 255 * 255
+            counter += 1
+        return pixel_loss / counter

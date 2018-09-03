@@ -16,7 +16,7 @@ class Alexnet(torch.nn.Module):
 
 
 class PhysicsModel(torch.nn.Module):
-    def __init__(self, num_feature, passthrough):
+    def __init__(self, num_feature, passthrough, select=True):
         super(PhysicsModel, self).__init__()
 
         self.num_feature = num_feature
@@ -36,7 +36,7 @@ class PhysicsModel(torch.nn.Module):
             functions.LinearPermutate(2048, 1024),
             functions.LinearPermutate(1024, num_feature)
         )
-        self.select = functions.SelectiveFilter(active=True, passthrough=passthrough)
+        self.select = functions.SelectiveFilter(active=select, passthrough=passthrough)
         self.flownetwork = functions.FlowDecode(dim_feature=num_feature)
 
     def forward(self, inputs, indices_dict):
@@ -103,6 +103,7 @@ class InterpolationModel(torch.nn.Module):
     def interpolate(self, feature, input, labels_and_indices):
         new_feature = feature.clone()
         new_input = input.clone()
+        # interpolate the phyiscs variable with the ones with physics value 1 and 5
         for label, indices_list in labels_and_indices.items():
             if label not in self.passthrough:
                 print("label {} is not contained in passthrough".format(label))
@@ -117,7 +118,7 @@ class InterpolationModel(torch.nn.Module):
                     item = label_data[0, :].clone()
                     item[passthrough] = (1 - 0.25 * i) * select_min + 0.25 * i * select_max
                     new_feature[indices[i], :] = item
-
+        # set all the warpped 5th frame to be the one with physics value 1
         for label, indices_list in labels_and_indices.items():
             for indices in indices_list:
                 label_input = new_input[indices, :, :, :].clone()
