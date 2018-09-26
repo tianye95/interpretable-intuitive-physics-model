@@ -119,11 +119,11 @@ class InterpolationModel(torch.nn.Module):
                     item[passthrough] = (1 - 0.25 * i) * select_min + 0.25 * i * select_max
                     new_feature[indices[i], :] = item
         # set all the warpped 5th frame to be the one with physics value 1
-        for label, indices_list in labels_and_indices.items():
-            for indices in indices_list:
-                label_input = new_input[indices, :, :, :].clone()
-                for i in range(5):
-                    replace_input = label_input[0, :, :, :].clone()
-                    new_input[indices[i], :, :, :] = replace_input
+        # for label, indices_list in labels_and_indices.items():
+        #     for indices in indices_list:
+        #         label_input = new_input[indices, :, :, :].clone()
+        #         for i in range(5):
+        #             replace_input = label_input[0, :, :, :].clone()
+        #             new_input[indices[i], :, :, :] = replace_input
         return new_input, new_feature
 

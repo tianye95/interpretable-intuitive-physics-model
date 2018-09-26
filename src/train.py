@@ -30,13 +30,15 @@ def main(args):
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 
     # ------------------------- get data loaders -------------------------
-    num_feature, trainlabels = 306, args.train_labels
+    num_feature = 306
+    trainlabels = ["mass", "force", "friction"] if args.baseline else args.train_labels
     passthrough_dict = utils.get_passthrough(trainlabels, parameter_length=25, vector_length=num_feature)
     train_loader, shape_test_loader, parameter_test_loader = \
         dataset.getloader(args, labels=trainlabels, inframe=[0, 1, 2, 3], outframe=[4])
 
     # ------------------------- initialize model and optimizer -------------------------
-    model = net.PhysicsModel(num_feature=num_feature, passthrough=passthrough_dict)
+    select = False if args.baseline else True
+    model = net.PhysicsModel(num_feature=num_feature, passthrough=passthrough_dict, select=select)
     if args.cuda:
         model = model.cuda()
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
@@ -123,6 +125,8 @@ def parse_arguments():
     parser.add_argument('--project-name', default='default')
     parser.add_argument('--train-labels', default=["mass", "force", "friction"])
 
+    parser.add_argument('--baseline', action='store_true', default=False,
+                        help='train the predictive model without disentangled representation')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='Enables CUDA training')
     parser.add_argument('--batch-size', type=int, default=4)
